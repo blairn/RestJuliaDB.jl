@@ -1,5 +1,34 @@
-using ./JuliaDBQuery
+using JuliaDBQuery
 using Test
+
+
+const predicate_test = """{
+    home:{
+        $eq:"gore"
+    },
+    age:{
+        $gt:25,
+        $lt:45
+    },
+    $or:[
+        {
+            job:{
+                $eq:"programmer"
+            }
+        }, {
+            retired:{
+                $eq:true
+            }
+        }
+    ]
+}"""
+
+@testset "predicate tests" begin
+
+end
+
+
+
 
 #basic queries
 const basic_query = """{
@@ -35,6 +64,7 @@ const pipeline_query = """
     }
 ]
 """
+
 
 @testset "JuliaDBQuery.jl" begin
     @test table = JuliaDBQuery.load("")
