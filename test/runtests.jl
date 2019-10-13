@@ -29,7 +29,7 @@ const badrow1 = Dict(["home" => "napier", "age" => 30, "retired" => true, "job" 
 const badrow2 = Dict(["home" => "gore", "age" => 60, "retired" => true, "job" => "manager"]) # wrong age
 const badrow3 = Dict(["home" => "gore", "age" => 30, "retired" => false, "job" => "manager"]) # not retired and job is wrong
 
-@testset "RestJuliaDB.jl" begin
+@testset "predicate test" begin
     local pt = @show JSON3.read(predicate_test, Dict)
     local pred,fields = JuliaDBQuery.predicate_for(pt)
     @test pred(goodrow1) == true

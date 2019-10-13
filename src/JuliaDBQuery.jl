@@ -102,8 +102,8 @@ function predicate_for(q::Dict)
 
             # make a function for each predicate
             local fs = map(keys(v) |> collect) do vk
-                local vv = @show v[@show vk]
-                lookup_predicate(vk,k, @show vv)
+                local vv = v[vk]
+                lookup_predicate(vk,k,vv)
             end
             # if the row handles all of the predicates, then the row should return true
             function(r) return all(map(f -> f(r),fs)) end
@@ -111,10 +111,6 @@ function predicate_for(q::Dict)
     end
     # if the row handles all of the predicates, then the row should return true
     return function(r) all(map(f -> f(r),functions)) end, symbols
-end
-
-function _and(field, q::Array)
-    map(lookup_predicate(),q)
 end
 
 function lookup_predicate(name, field, q)
@@ -174,10 +170,8 @@ function _in(field, q::Array)
 end
 
 function _filter(table, q::Dict)
-    local field_symbols = [Symbol(k) for k in keys(q)] #map doesn't work on sets... :(
-    local field_symbols_tuple = (symbols...,)
-    # [k,v -> (Symbol(k),_and()) for (k,v) in q]
-    # filter(f, table ; select=field_symbols_tuple)
+    local f, symbols = predicate_for(q)
+    filter(f, table ; select=symbols)
 end
 
 function _group(table, q::Dict)
@@ -203,5 +197,12 @@ end
 
 function _js(table,q::Dict)
 end
+
+function _julia(table,q::Dict)
+end
+
+function _r(table,q::Dict)
+end
+
 
 end
