@@ -6,7 +6,6 @@ version = "0.1.0"
 [deps]
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
 HTTP = "cd3eb016-35fb-5094-929b-558a96fad6f3"
-JSON2 = "2535ab7d-5cd8-5a07-80ac-9b1792aadce3"
 JSON3 = "0f8b85d8-7281-11e9-16c2-39a750bddbf1"
 JuliaDB = "a93385a2-3734-596a-9a66-3cfbb77141e6"
 OnlineStats = "a15396b6-48d5-5d58-9928-6d29437db91e"
