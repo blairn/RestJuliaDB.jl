@@ -1,7 +1,7 @@
 module JuliaDBQuery
 using JuliaDB
 using OnlineStats
-using JSON2
+
 const table_cache = Dict()
 
 "loads a table from disk, if it hasn't already loaded, returns the table either way"
@@ -20,7 +20,7 @@ function run_pipeline_query(table, q::String)
 end
 
 function run_basic_query(table, q::Dict{String,Any})
-    filter(table, q)
+    _filter(table, q)
 end
 
 function run_pipeline_query(table, q::Array{Dict{String, Any}})
@@ -85,32 +85,34 @@ function predicate_for(q::Dict)
         # this if, returns the function for the current branch in the json
         if k == "\$and"
             local fs_with_symbols = map(predicate_for,v) |> collect
-            fs = getindex.(fs_with_symbols,1)
-            symbol_tuples = getindex.(fs_with_symbols,2)
+            local fs = getindex.(fs_with_symbols,1)
+            local symbol_tuples = getindex.(fs_with_symbols,2)
             symbols = symbols ∪ reduce(∪, symbol_tuples)
             function(r) return all(map(f -> f(r),fs)) end
         elseif k == "\$or"
             local fs_with_symbols = map(predicate_for,v) |> collect
-            fs = getindex.(fs_with_symbols,1)
-            symbol_tuples = getindex.(fs_with_symbols,2)
+            local fs = getindex.(fs_with_symbols,1)
+            local symbol_tuples = getindex.(fs_with_symbols,2)
             symbols = reduce(∪, symbol_tuples; init=symbols)
             function(r) return any(map(f -> f(r),fs)) end
         else
             # we need to know the fields which we need to select on
             # so add it to the list
-            push!(symbols, Symbol(k))
+            local field = Symbol(k)
+            push!(symbols, field)
 
             # make a function for each predicate
             local fs = map(keys(v) |> collect) do vk
                 local vv = v[vk]
-                lookup_predicate(vk,k,vv)
+                lookup_predicate(vk,field,vv)
             end
             # if the row handles all of the predicates, then the row should return true
             function(r) return all(map(f -> f(r),fs)) end
         end
     end
     # if the row handles all of the predicates, then the row should return true
-    return function(r) all(map(f -> f(r),functions)) end, symbols
+    local symbols_tuple = ((symbols |> collect)...,)
+    return function(r) all(map(f -> f(r),functions)) end, symbols_tuple
 end
 
 function lookup_predicate(name, field, q)

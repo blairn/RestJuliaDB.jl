@@ -23,14 +23,14 @@ const predicate_test = """{
     ]
 }"""
 
-const goodrow1 = Dict(["home" => "gore", "age" => 30, "retired" => true, "job" => "manager"])
-const goodrow2 = Dict(["home" => "gore", "age" => 30, "retired" => false, "job" => "programmer"])
-const badrow1 = Dict(["home" => "napier", "age" => 30, "retired" => true, "job" => "manager"]) # wrong home
-const badrow2 = Dict(["home" => "gore", "age" => 60, "retired" => true, "job" => "manager"]) # wrong age
-const badrow3 = Dict(["home" => "gore", "age" => 30, "retired" => false, "job" => "manager"]) # not retired and job is wrong
+const goodrow1 = Dict([:home => "gore", :age => 30, :retired => true, :job => "manager"])
+const goodrow2 = Dict([:home => "gore", :age => 30, :retired => false, :job => "programmer"])
+const badrow1 = Dict([:home => "napier", :age => 30, :retired => true, :job => "manager"]) # wrong home
+const badrow2 = Dict([:home => "gore", :age => 60, :retired => true, :job => "manager"]) # wrong age
+const badrow3 = Dict([:home => "gore", :age => 30, :retired => false, :job => "manager"]) # not retired and job is wrong
 
 @testset "predicate test" begin
-    local pt = @show JSON3.read(predicate_test, Dict)
+    local pt = JSON3.read(predicate_test, Dict)
     local pred,fields = JuliaDBQuery.predicate_for(pt)
     @test pred(goodrow1) == true
     @test pred(goodrow2) == true
@@ -42,4 +42,32 @@ const badrow3 = Dict(["home" => "gore", "age" => 30, "retired" => false, "job" =
     @test fields ∋ :retired
     @test fields ∋ :job
     @test length(fields) == 4
+end
+
+
+# const sa_filter = """
+# {
+#     "sa2_code": {
+#         "\$eq": 100100
+#     },
+#     "hour": {
+#         "\$eq": 1
+#     }
+# }
+# """
+
+const sa_filter = """
+{
+    "sa2_code": {
+        "\$eq": 100100
+    }
+}
+"""
+
+
+@testset "database test" begin
+    local q = JSON3.read(sa_filter, Dict)
+    local data = @show JuliaDBQuery.load_table("data")
+    local results = @show JuliaDBQuery.run_basic_query(data, q)
+    @test length(results) != 0
 end
