@@ -60,6 +60,9 @@ const sa_filter = """
 {
     "sa2_code": {
         "\$eq": 100100
+    },
+    "hour": {
+        "\$eq": 12
     }
 }
 """

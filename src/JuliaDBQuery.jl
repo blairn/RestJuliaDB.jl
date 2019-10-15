@@ -1,6 +1,7 @@
 module JuliaDBQuery
 using JuliaDB
 using OnlineStats
+using JSON3
 
 const table_cache = Dict()
 
@@ -12,11 +13,11 @@ function load_table(table_name)
 end
 
 function run_basic_query(table, q::String)
-    run_basic_query(table,JSON2.parse(q))
+    run_basic_query(table,JSON3.read(q,Dict))
 end
 
 function run_pipeline_query(table, q::String)
-    run_pipeline_query(table, JSON2.parse(q))
+    run_pipeline_query(table, JSON3.read(q,Dict))
 end
 
 function run_basic_query(table, q::Dict{String,Any})
@@ -94,6 +95,7 @@ function predicate_for(q::Dict)
             local fs = getindex.(fs_with_symbols,1)
             local symbol_tuples = getindex.(fs_with_symbols,2)
             symbols = reduce(∪, symbol_tuples; init=symbols)
+
             function(r) return any(map(f -> f(r),fs)) end
         else
             # we need to know the fields which we need to select on
@@ -105,6 +107,9 @@ function predicate_for(q::Dict)
             local fs = map(keys(v) |> collect) do vk
                 local vv = v[vk]
                 lookup_predicate(vk,field,vv)
+            end
+            if (length(fs) == 1)
+                return fs[1]
             end
             # if the row handles all of the predicates, then the row should return true
             function(r) return all(map(f -> f(r),fs)) end
@@ -172,8 +177,9 @@ function _in(field, q::Array)
 end
 
 function _filter(table, q::Dict)
-    local f, symbols = predicate_for(q)
-    filter(f, table ; select=symbols)
+    @time local f, symbols = predicate_for(q)
+    println("filtering for ", symbols)
+    @time filter(f, table ; select=symbols)
 end
 
 function _group(table, q::Dict)

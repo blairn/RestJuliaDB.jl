@@ -1,18 +1,17 @@
 module RestJuliaDB
+using Distributed
+addprocs()
 
-# include("./Loader.jl")
-# using .Loader
-#
-# include("./Web.jl")
-# using .Web
+@everywhere include("./src/JuliaDBQuery.jl")
+@everywhere using .JuliaDBQuery
 
-include("./JuliaDBQuery.jl")
-using .JuliaDBQuery
-export JuliaDBQuery
+@everywhere include("./src/Web.jl")
+@everywhere using .Web
+@everywhere using OnlineStats
+@everywhere using JuliaDB
 
-greet() = print("Hello World!")
-export greet
+Web.start()
 
-# test()
 
-end # module
+
+end

@@ -1,5 +1,22 @@
 module Web
 using HTTP
+using JuliaDB
+include("./JuliaDBQuery.jl")
+using .JuliaDBQuery
+using CSVFiles
+
+function write_row(http, row)
+    write(http,join(row,","))
+    write(http,"\n")
+end
+
+function write_chunk(http, chunk)
+    local rows = chunk |> collect
+    foreach(row -> write_row(http, row), rows)
+end
+
+const BASE_PATH = r"/api/v1/.*"
+const API_PATH = r"/api/v1/([a-zA-Z0-9_]+)"
 
 """
 This handles the http get requests
@@ -9,23 +26,50 @@ in the form the accept header has asked for
 """
 function handle_get(http::HTTP.Stream)
     local message = http.message
-    println("get")
-    while !eof(http)
-        println("body data: ", String(readavailable(http)))
+    local path = match(API_PATH,http.message.target)
+    if isnothing(path)
+        local path = match(BASE_PATH,http.message.target)
+        startwrite(http)
+        if isnothing(path)
+            write(http,"our api urls are of the form /api/v1/{table}\n")
+        else
+            write(http,"nice try, but sadly, we check our API paths for that kind of shenanigans\n")
+        end
+        closewrite(http)
+        return
     end
+    t = JuliaDBQuery.load_table(path[1])
     startwrite(http)
-    write(http, "stream from get\n")
-    write(http, "more response body")
+    write_row(http, colnames(t)) # write header
+    foreach(chunk -> write_chunk(http, chunk),t.chunks)
+    closewrite(http)
 end
+
 
 function handle_post(http::HTTP.Stream)
     local message = http.message
-    while !eof(http)
-        println("body data: ", String(readavailable(http)))
+    local query = join(readlines(http))
+    println("QUERY:" , query)
+    local path = match(API_PATH,http.message.target)
+    if isnothing(path)
+        local path = match(BASE_PATH,http.message.target)
+        startwrite(http)
+        if isnothing(path)
+            write(http,"our api urls are of the form /api/v1/{table}\n")
+        else
+            write(http,"nice try, but sadly, we check our API paths for that kind of shenanigans\n")
+        end
+        closewrite(http)
+        return
     end
+    local table = JuliaDBQuery.load_table(path[1])
+    local result = JuliaDBQuery.run_basic_query(table,query)
     startwrite(http)
-    write(http, "stream from post\n")
+    write_row(http, colnames(result)) # write header
+    foreach(chunk -> write_chunk(http, chunk),result.chunks)
+    closewrite(http)
 end
+
 """
 since this is AFTER the proxy, we can just ask for roles in the header
 the role list is space seperated
@@ -38,15 +82,17 @@ function auth_handler(http::HTTP.Stream)
     local roles = split(HTTP.header(http, "roles", "anonymous"))
     println("roles: $roles")
     task_local_storage("roles", roles) do
-        handle_get(http)
+        if http.message.method=="POST"
+            handle_post(http)
+        else
+            handle_get(http)
+        end
     end
 end
-#
-# const security = HTTP.Router()
-# HTTP.@register(security, "GET", "/", auth_handler)
 
-println("starting")
-HTTP.serve(auth_handler; stream=true)
-println("running")
+function start()
+    println("starting")
+    HTTP.serve(auth_handler; stream=true)
+end
 
 end
