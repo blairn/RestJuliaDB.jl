@@ -5,6 +5,15 @@ using JSON3
 
 const table_cache = Dict()
 
+@inline function _all(fs, x)
+    result = true
+    @inbounds for i in fs
+        result = result && i(x)
+    end
+    return result
+end
+
+
 "loads a table from disk, if it hasn't already loaded, returns the table either way"
 function load_table(table_name)
     return get!(table_cache, table_name) do
@@ -89,7 +98,7 @@ function predicate_for(q::Dict)
             local fs = getindex.(fs_with_symbols,1)
             local symbol_tuples = getindex.(fs_with_symbols,2)
             symbols = symbols ∪ reduce(∪, symbol_tuples)
-            function(r) return all(map(f -> f(r),fs)) end
+            r -> _all(fs,r)
         elseif k == "\$or"
             local fs_with_symbols = map(predicate_for,v) |> collect
             local fs = getindex.(fs_with_symbols,1)
@@ -112,12 +121,15 @@ function predicate_for(q::Dict)
                 return fs[1]
             end
             # if the row handles all of the predicates, then the row should return true
-            function(r) return all(map(f -> f(r),fs)) end
+            r -> _all(fs,r)
         end
     end
     # if the row handles all of the predicates, then the row should return true
     local symbols_tuple = ((symbols |> collect)...,)
-    return function(r) all(map(f -> f(r),functions)) end, symbols_tuple
+    if (length(functions) == 1)
+        return functions[1], symbols_tuple
+    end
+    return r -> _all(functions,r), symbols_tuple
 end
 
 function lookup_predicate(name, field, q)
@@ -147,36 +159,36 @@ end
 #     return x -> x[field] ∈ q
 # end
 
-function _eq(field, q)
+@inline function _eq(field, q)
     return x -> x[field] == q
 end
 
 
-function _not(field, q)
+@inline function _not(field, q)
     return x -> !x[field]
 end
 
-function _gt(field, q)
+@inline function _gt(field, q)
     return x -> x[field] > q
 end
 
-function _gte(field, q)
+@inline function _gte(field, q)
     return x -> x[field] >= q
 end
 
-function _lt(field, q)
+@inline function _lt(field, q)
     return x -> x[field] < q
 end
 
-function _lte(field, q)
+@inline function _lte(field, q)
     return x -> x[field] <= q
 end
 
-function _in(field, q::Array)
+@inline function _in(field, q::Array)
     return x -> x[field] ∈ q
 end
 
-function _filter(table, q::Dict)
+@inline function _filter(table, q::Dict)
     @time local f, symbols = predicate_for(q)
     println("filtering for ", symbols)
     @time filter(f, table ; select=symbols)
