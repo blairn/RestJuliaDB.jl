@@ -1,9 +1,19 @@
 module JuliaDBQuery
+
 using JuliaDB
 using OnlineStats
 using JSON3
+using Dates
 
 const table_cache = Dict()
+
+# yes, this is bad, I'll be adding stuff to our query parser rather than this hack
+Base.:(<)(date::Date,s::String) = date < Date(s)
+Base.:(>)(date::Date,s::String) = date > Date(s)
+Base.:(<=)(date::Date,s::String) = date <= Date(s)
+Base.:(>=)(date::Date,s::String) = date >= Date(s)
+Base.:(==)(date::Date,s::String) = date == Date(s)
+
 
 @inline function _all(fs, x)
     result = true

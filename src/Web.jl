@@ -80,6 +80,14 @@ function auth_handler(http::HTTP.Stream)
     @show http.message.target
     @show http.message.method
     local roles = split(HTTP.header(http, "roles", "anonymous"))
+    local token = HTTP.header(http, "Authorization", "")
+    if token != "qWohIIuX5Oc0DxPHUAyX"
+        HTTP.setstatus(http, 404)
+        startwrite(http)
+        write(http, "Bad auth, contact data ventures for a token\n")
+        closewrite(http)
+        return
+    end
     println("roles: $roles")
     task_local_storage("roles", roles) do
         if http.message.method=="POST"
@@ -92,7 +100,7 @@ end
 
 function start()
     println("starting")
-    HTTP.serve(auth_handler; stream=true)
+    HTTP.serve(auth_handler,"0.0.0.0"; stream=true)
 end
 
 end
